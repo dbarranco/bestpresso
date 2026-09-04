@@ -733,6 +733,29 @@ body { min-width:0; min-height:0; background:#171717; }
   text-decoration: underline;
 }
 
+.status-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 0;
+}
+
+.status-info__label {
+  margin: 0;
+  font-size: 12px;
+  color: #8f928f;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.status-info__value {
+  margin: 0;
+  font-size: 14px;
+  color: #d5d7d5;
+  font-weight: 500;
+}
+
 @media (max-width: 600px) {
   .settings-panel__header {
     padding: 0 16px;

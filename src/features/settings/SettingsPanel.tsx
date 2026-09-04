@@ -110,6 +110,22 @@ export function SettingsPanel({
   const steamUtility = model.utilities.find((u) => u.id === 'steam')
   const waterUtility = model.utilities.find((u) => u.id === 'water')
   const scaleUtility = model.utilities.find((u) => u.id === 'scale')
+  const tankUtility = model.utilities.find((u) => u.id === 'tank')
+  const activeProfile = model.activeProfileId
+    ? model.profiles.find((p) => p.id === model.activeProfileId)
+    : undefined
+
+  const getMachineStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      'ready': '✓ Ready',
+      'heating': '🔥 Heating',
+      'notHeating': '◯ Off',
+      'thirsty': '💧 Refill Water',
+      'sleeping': '😴 Sleeping',
+      'disconnected': '✗ Disconnected'
+    }
+    return labels[status] || status
+  }
 
   return (
     <section className="settings-panel">
@@ -136,6 +152,48 @@ export function SettingsPanel({
       )}
 
       <div className="settings-panel__content">
+        {/* Machine Status */}
+        <section className="settings-section">
+          <h2 className="settings-section__title">Machine Status</h2>
+          <div className="settings-section__content">
+            <div className="status-info">
+              <p className="status-info__label">Status</p>
+              <p className="status-info__value">{getMachineStatusLabel(model.readiness)}</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Active Profile */}
+        {activeProfile && (
+          <section className="settings-section">
+            <h2 className="settings-section__title">Active Profile</h2>
+            <div className="settings-section__content">
+              <div className="status-info">
+                <p className="status-info__label">Name</p>
+                <p className="status-info__value">{activeProfile.name}</p>
+              </div>
+              {activeProfile.temperature && (
+                <div className="status-info">
+                  <p className="status-info__label">Brew Temperature</p>
+                  <p className="status-info__value">{activeProfile.temperature}°C</p>
+                </div>
+              )}
+              {activeProfile.dose && (
+                <div className="status-info">
+                  <p className="status-info__label">Dose</p>
+                  <p className="status-info__value">{activeProfile.dose}g</p>
+                </div>
+              )}
+              {activeProfile.targetYield && (
+                <div className="status-info">
+                  <p className="status-info__label">Target Yield</p>
+                  <p className="status-info__value">{activeProfile.targetYield}g</p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* Machine Settings */}
         <section className="settings-section">
           <h2 className="settings-section__title">Machine Settings</h2>
@@ -168,6 +226,17 @@ export function SettingsPanel({
               </div>
             )}
 
+            {tankUtility && (
+              <div className="settings-section__subsection">
+                <h3 className="settings-section__subtitle">Water Tank</h3>
+                {tankUtility.metrics.map((metric) => (
+                  <div key={metric.label} className="settings-metric">
+                    <Metric metric={metric} />
+                  </div>
+                ))}
+              </div>
+            )}
+
             {scaleUtility && (
               <div className="settings-section__subsection">
                 <h3 className="settings-section__subtitle">Scale</h3>
@@ -184,6 +253,37 @@ export function SettingsPanel({
             )}
           </div>
         </section>
+
+        {/* Previous Shot */}
+        {model.previousShot && (
+          <section className="settings-section">
+            <h2 className="settings-section__title">Last Shot</h2>
+            <div className="settings-section__content">
+              <div className="status-info">
+                <p className="status-info__label">Profile</p>
+                <p className="status-info__value">{model.previousShot.profileName}</p>
+              </div>
+              {model.previousShot.totalYield && (
+                <div className="status-info">
+                  <p className="status-info__label">Yield</p>
+                  <p className="status-info__value">{model.previousShot.totalYield}g</p>
+                </div>
+              )}
+              {model.previousShot.totalTime && (
+                <div className="status-info">
+                  <p className="status-info__label">Duration</p>
+                  <p className="status-info__value">{model.previousShot.totalTime}s</p>
+                </div>
+              )}
+              {model.previousShot.timestamp && (
+                <div className="status-info">
+                  <p className="status-info__label">Time</p>
+                  <p className="status-info__value">{new Date(model.previousShot.timestamp).toLocaleTimeString()}</p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Updates */}
         <section className="settings-section">
