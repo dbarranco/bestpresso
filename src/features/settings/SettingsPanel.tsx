@@ -13,7 +13,7 @@ interface UpdateInfo {
   releaseNotes?: string
 }
 
-const APP_VERSION = '0.1.23'
+const APP_VERSION = '0.1.24'
 
 const editForMachineSetting = (utility: MachineUtility, label: string, onSave?: (setting: EditableMachineSetting, value: number) => void, disabled?: boolean) => {
   if (!onSave) return undefined
