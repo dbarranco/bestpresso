@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react'
-import { getDecaidSettingsUrl } from './api/decaid/config'
 import { AppShell } from './app/AppShell'
 import { InteractionSound } from './components/InteractionSound/InteractionSound'
 import { ValueAdjustmentProvider } from './components/ValueAdjustment/ValueAdjustmentProvider'
 import { useBrewingData } from './features/brew/useBrewingData'
 import { ProfilesPanel } from './features/profiles/ProfilesPanel'
 import { PreviousShotScreen } from './features/history/PreviousShotScreen'
+import { SettingsPanel } from './features/settings/SettingsPanel'
 import './styles/index.css'
 
-type AppPage = 'home' | 'profiles' | 'previous-pull'
+type AppPage = 'home' | 'profiles' | 'previous-pull' | 'settings'
 
 const currentPage = (): AppPage => {
   const page = new URLSearchParams(window.location.search).get('page')
-  return page === 'profiles' || page === 'previous-pull' ? page : 'home'
+  return page === 'profiles' || page === 'previous-pull' || page === 'settings' ? page : 'home'
 }
 
 export default function App() {
@@ -47,7 +47,8 @@ export default function App() {
   let screen
   if (page === 'profiles' && !data.liveBrew.visible) screen = <ProfilesPanel profiles={data.allProfiles} favoriteProfileSlots={data.favoriteProfileSlots} activeProfileId={data.model.activeProfileId} feedback={data.settingFeedback} onSelectProfile={async (profileId) => { const selected = await data.selectProfile(profileId); if (selected) navigate('home'); return selected }} onSetFavoriteSlot={data.setFavoriteProfileSlot} onRemoveFavorite={data.removeFavoriteProfile} onClose={() => navigate('home')} />
   else if (page === 'previous-pull' && !data.liveBrew.visible) screen = <PreviousShotScreen shots={data.shotHistory} initialShot={data.model.previousShot} status={data.previousShotStatus} onSelectShot={data.loadHistoryShot} onDismiss={() => navigate('home')} />
-  else screen = <AppShell {...data} onSleep={data.toggleSleep} onWake={data.wakeMachine} onStopEspresso={data.stopEspresso} onSkipBrewStage={data.skipBrewStage} onPrepareCleaning={data.prepareCleaningSequence} onCancelCleaning={data.cancelCleaningSequence} onDismissLiveBrew={data.dismissLiveBrew} onSearchScale={data.searchForScale} onConnectScale={data.connectToScale} onDismissScalePicker={data.dismissScalePicker} onTareScale={data.tareConnectedScale} onUpdateMachineSetting={data.updateMachineSetting} onUpdateProfileSetting={data.updateProfileSetting} onSelectProfile={data.selectProfile} onOpenSettings={() => window.location.assign(getDecaidSettingsUrl())} onManageProfiles={() => navigate('profiles')} onOpenPreviousShot={() => navigate('previous-pull')} />
+  else if (page === 'settings' && !data.liveBrew.visible) screen = <SettingsPanel model={data.model} feedback={data.settingFeedback} scale={data.scale} scaleTarePending={data.scaleTarePending} settingsDisabled={data.settingsDisabled} onUpdateMachineSetting={data.updateMachineSetting} onSearchScale={data.searchForScale} onTareScale={data.tareConnectedScale} onClose={() => navigate('home')} />
+  else screen = <AppShell {...data} onSleep={data.toggleSleep} onWake={data.wakeMachine} onStopEspresso={data.stopEspresso} onSkipBrewStage={data.skipBrewStage} onPrepareCleaning={data.prepareCleaningSequence} onCancelCleaning={data.cancelCleaningSequence} onDismissLiveBrew={data.dismissLiveBrew} onSearchScale={data.searchForScale} onConnectScale={data.connectToScale} onDismissScalePicker={data.dismissScalePicker} onTareScale={data.tareConnectedScale} onUpdateMachineSetting={data.updateMachineSetting} onUpdateProfileSetting={data.updateProfileSetting} onSelectProfile={data.selectProfile} onOpenSettings={() => navigate('settings')} onManageProfiles={() => navigate('profiles')} onOpenPreviousShot={() => navigate('previous-pull')} />
 
   return <ValueAdjustmentProvider><InteractionSound />{screen}</ValueAdjustmentProvider>
 }
