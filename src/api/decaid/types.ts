@@ -60,10 +60,14 @@ export interface MachineSnapshot {
 export interface ScaleSnapshot { status?: 'connected' | 'disconnected'; timestamp?: string; weight?: number; weightFlow?: number; timerValue?: number | null }
 export interface DecaidDevice { id?: string; name?: string; state?: 'connected' | 'disconnected'; type?: 'machine' | 'scale' | 'sensor'; available?: boolean }
 export type ScalePowerMode = 'disabled' | 'displayOff' | 'disconnect'
-export interface DecaidSettings { preferredScaleId?: string | null; blockTareDuringShot?: boolean; scalePowerMode?: ScalePowerMode }
-export interface DecaidMachineSettings { flushTemp?: number; flushTimeout?: number; flushFlow?: number }
+export interface DecaidSettings { preferredScaleId?: string | null; blockTareDuringShot?: boolean; scalePowerMode?: ScalePowerMode; blockOnNoScale?: boolean; stopHotWaterAtWeight?: boolean; automaticUpdateCheck?: boolean; keepAwake?: boolean }
+export interface DecaidMachineSettings { flushTemp?: number; flushTimeout?: number; flushFlow?: number; hotWaterFlow?: number; steamFlow?: number; tankTemp?: number; fan?: number; usb?: boolean; steamPurgeMode?: number }
+export interface DecaidAdvancedSettings { heaterVoltage?: number; refillKitSetting?: number; flowMultiplier?: number; heaterPh1Flow?: number; heaterPh2Flow?: number; heaterIdleTemp?: number; heaterPh2Timeout?: number; [key: string]: unknown }
+export interface CupWarmerState { enabled?: boolean; temperature?: number; currentTemperature?: number }
+export interface CupWarmerPreheatState { enabled?: boolean; leadMinutes?: number }
 export interface DisplayState { brightness?: number; requestedBrightness?: number; platformSupported?: { brightness?: boolean; wakeLock?: boolean } }
 export interface WaterLevels { currentLevel?: number; refillLevel?: number }
+export interface SkinRecord { id?: string; name?: string; description?: string; version?: string; isBundled?: boolean }
 export interface TimeToReadyFrame { status?: string; remainingTimeMs?: number; currentTemp?: number; targetTemp?: number }
 export interface ShotMeasurement {
   machine?: {

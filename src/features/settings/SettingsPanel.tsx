@@ -1,48 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import settingsBackIcon from '../../assets/figma/profiles-back.svg'
-import { Metric } from '../../components/Metric/Metric'
-import type { BrewingScreenModel, EditableMachineSetting, MachineUtility, ScaleConnection, SettingFeedback } from '../../domain/brewing'
-import { VALUE_ADJUSTMENTS } from '../../domain/valueAdjustments'
-import { MachineUtilityCard } from '../machine/MachineUtilityCard'
-
-interface UpdateInfo {
-  type: 'app' | 'machine'
-  currentVersion: string
-  latestVersion?: string
-  updateAvailable: boolean
-  releaseNotes?: string
-}
-
-const APP_VERSION = '0.1.26'
-
-const editForMachineSetting = (utility: MachineUtility, label: string, onSave?: (setting: EditableMachineSetting, value: number) => void, disabled?: boolean) => {
-  if (!onSave) return undefined
-  const setting: EditableMachineSetting | undefined = utility.id === 'water' && label === 'Volume'
-    ? 'hotWaterVolume'
-    : utility.id === 'water' && label === 'Temperature'
-      ? 'hotWaterTemperature'
-      : utility.id === 'steam' && label === 'Target'
-        ? 'steamTemperature'
-        : utility.id === 'steam' && label === 'Duration'
-          ? 'steamDuration'
-          : utility.id === 'steam' && label === 'Flow'
-            ? 'steamFlow'
-            : undefined
-  if (!setting) return undefined
-
-  const definition = VALUE_ADJUSTMENTS[setting]
-  return {
-    title: definition.title,
-    min: definition.min,
-    max: definition.max,
-    step: definition.step,
-    mode: definition.mode,
-    suggestionKey: setting,
-    presets: definition.suggestions,
-    disabled,
-    onSave: (value: number) => onSave(setting, value),
-  }
-}
+import type { BrewingScreenModel, ScaleConnection, SettingFeedback } from '../../domain/brewing'
+import { settingsPageForSubcategory } from '../../domain/settingsTree'
+import { SettingsNav, resolveDefaultSelection } from './SettingsNav'
+import { SETTINGS_PAGES } from './SettingsPages'
+import type { SettingsPageProps } from './SettingsPages'
+import { useProfileSettings } from './hooks/useProfileSettings'
+import { useMachineSettings } from './hooks/useMachineSettings'
+import { useBluetoothDevices } from './hooks/useBluetoothDevices'
+import { useSkinSettings } from './hooks/useSkinSettings'
 
 interface SettingsPanelProps {
   model: BrewingScreenModel
@@ -50,7 +16,7 @@ interface SettingsPanelProps {
   scale?: ScaleConnection
   scaleTarePending?: boolean
   settingsDisabled?: boolean
-  onUpdateMachineSetting: (setting: EditableMachineSetting, value: number) => void
+  onFeedback?: (status: 'saving' | 'saved' | 'error', message: string) => void
   onSearchScale?: () => void
   onTareScale?: () => void
   onClose: () => void
@@ -62,76 +28,64 @@ export function SettingsPanel({
   scale,
   scaleTarePending,
   settingsDisabled,
-  onUpdateMachineSetting,
+  onFeedback,
   onSearchScale,
   onTareScale,
   onClose,
 }: SettingsPanelProps) {
-  const [updates, setUpdates] = useState<UpdateInfo[]>([
-    { type: 'app', currentVersion: APP_VERSION, updateAvailable: false },
-  ])
-  const [checkingUpdates, setCheckingUpdates] = useState(false)
+  const noOpFeedback = () => {}
+  const feedbackHandler = onFeedback || noOpFeedback
+  const [selection, setSelection] = useState(resolveDefaultSelection)
 
-  const handleCheckUpdates = async () => {
-    setCheckingUpdates(true)
-    try {
-      // Check for app updates from GitHub
-      const response = await fetch('https://api.github.com/repos/dbarranco/bestpresso/releases/latest', {
-        headers: { 'Accept': 'application/vnd.github.v3+json' },
-      })
-      if (response.ok) {
-        const data = await response.json()
-        const latestVersion = data.tag_name?.replace(/^v/, '')
-        setUpdates((prev) =>
-          prev.map((update) =>
-            update.type === 'app'
-              ? {
-                  ...update,
-                  latestVersion,
-                  updateAvailable: latestVersion && latestVersion !== APP_VERSION ? true : false,
-                  releaseNotes: data.body,
-                }
-              : update,
-          ),
-        )
-      }
-    } catch (error) {
-      console.error('Failed to check for updates:', error)
-    } finally {
-      setCheckingUpdates(false)
-    }
-  }
+  const { updateProfileSetting } = useProfileSettings(feedbackHandler)
+  const { updateMachineSetting, updateUsbCharger, updateCupWarmer, updateCupWarmerPreheat, updateAdvancedSetting, setBrightness, updateStoreSetting, onScaleCalibration, resetSettings, machineSettings, advancedSettings, flowMultiplier, cupWarmer, cupWarmerPreheat, displayBrightness, storeSettings } = useMachineSettings(feedbackHandler)
+  const { devices, scanning, pendingDeviceId, scan, connect, disconnect } = useBluetoothDevices(feedbackHandler)
+  const { skins, defaultSkinId, setDefaultSkin } = useSkinSettings(feedbackHandler)
 
-  useEffect(() => {
-    // Auto-check for updates on mount
-    handleCheckUpdates()
-  }, [])
-
-  const steamUtility = model.utilities.find((u) => u.id === 'steam')
-  const waterUtility = model.utilities.find((u) => u.id === 'water')
-  const scaleUtility = model.utilities.find((u) => u.id === 'scale')
-  const tankUtility = model.utilities.find((u) => u.id === 'tank')
-  const activeProfile = model.activeProfileId
-    ? model.profiles.find((p) => p.id === model.activeProfileId)
-    : undefined
-
-  const getMachineStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      'ready': '✓ Ready',
-      'heating': '🔥 Heating',
-      'notHeating': '◯ Off',
-      'thirsty': '💧 Refill Water',
-      'sleeping': '😴 Sleeping',
-      'disconnected': '✗ Disconnected'
-    }
-    return labels[status] || status
-  }
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- every tree subcategory maps to a registered page
+  const PageContent = SETTINGS_PAGES[settingsPageForSubcategory(selection.subcategoryId)!]
 
   const handleSwitchSkin = () => {
     // Redirect to Streamline.js (typically at port 3000)
     const host = window.location.hostname
     const port = 3000
     window.location.href = `http://${host}:${port}`
+  }
+
+  const pageProps: SettingsPageProps = {
+    model,
+    feedback,
+    scale,
+    scaleTarePending,
+    settingsDisabled,
+    onSearchScale,
+    onTareScale,
+    updateProfileSetting,
+    updateMachineSetting,
+    updateUsbCharger,
+    updateCupWarmer,
+    updateCupWarmerPreheat,
+    updateAdvancedSetting,
+    setBrightness,
+    updateStoreSetting,
+    onScaleCalibration,
+    resetSettings,
+    machineSettings,
+    advancedSettings,
+    flowMultiplier,
+    cupWarmer,
+    cupWarmerPreheat,
+    displayBrightness,
+    storeSettings,
+    devices,
+    scanning,
+    pendingDeviceId,
+    onScanDevices: scan,
+    onConnectDevice: connect,
+    onDisconnectDevice: disconnect,
+    skins,
+    defaultSkinId,
+    onSelectSkin: setDefaultSkin,
   }
 
   return (
@@ -165,196 +119,15 @@ export function SettingsPanel({
         </div>
       )}
 
-      <div className="settings-panel__content">
-        {/* Machine Status */}
-        <section className="settings-section">
-          <h2 className="settings-section__title">Machine Status</h2>
-          <div className="settings-section__content">
-            <div className="status-info">
-              <p className="status-info__label">Status</p>
-              <p className="status-info__value">{getMachineStatusLabel(model.readiness)}</p>
-            </div>
-          </div>
-        </section>
-
-        {/* Active Profile */}
-        {activeProfile && (
-          <section className="settings-section">
-            <h2 className="settings-section__title">Active Profile</h2>
-            <div className="settings-section__content">
-              <div className="status-info">
-                <p className="status-info__label">Name</p>
-                <p className="status-info__value">{activeProfile.name}</p>
-              </div>
-              {activeProfile.temperature && (
-                <div className="status-info">
-                  <p className="status-info__label">Brew Temperature</p>
-                  <p className="status-info__value">{activeProfile.temperature}°C</p>
-                </div>
-              )}
-              {activeProfile.dose && (
-                <div className="status-info">
-                  <p className="status-info__label">Dose</p>
-                  <p className="status-info__value">{activeProfile.dose}g</p>
-                </div>
-              )}
-              {activeProfile.targetYield && (
-                <div className="status-info">
-                  <p className="status-info__label">Target Yield</p>
-                  <p className="status-info__value">{activeProfile.targetYield}g</p>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* Machine Settings */}
-        <section className="settings-section">
-          <h2 className="settings-section__title">Machine Settings</h2>
-          <div className="settings-section__content">
-            {steamUtility && (
-              <div className="settings-section__subsection">
-                <h3 className="settings-section__subtitle">Steam</h3>
-                {steamUtility.metrics.map((metric) => (
-                  <div key={metric.label} className="settings-metric">
-                    <Metric
-                      metric={metric}
-                      edit={editForMachineSetting(steamUtility, metric.label, onUpdateMachineSetting, settingsDisabled)}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {waterUtility && (
-              <div className="settings-section__subsection">
-                <h3 className="settings-section__subtitle">Hot Water</h3>
-                {waterUtility.metrics.map((metric) => (
-                  <div key={metric.label} className="settings-metric">
-                    <Metric
-                      metric={metric}
-                      edit={editForMachineSetting(waterUtility, metric.label, onUpdateMachineSetting, settingsDisabled)}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {tankUtility && (
-              <div className="settings-section__subsection">
-                <h3 className="settings-section__subtitle">Water Tank</h3>
-                {tankUtility.metrics.map((metric) => (
-                  <div key={metric.label} className="settings-metric">
-                    <Metric metric={metric} />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {scaleUtility && (
-              <div className="settings-section__subsection">
-                <h3 className="settings-section__subtitle">Scale</h3>
-                <MachineUtilityCard
-                  utility={scaleUtility}
-                  scale={scale}
-                  scaleTarePending={scaleTarePending}
-                  settingsDisabled={settingsDisabled}
-                  onSearchScale={onSearchScale}
-                  onTareScale={onTareScale}
-                  onUpdateSetting={onUpdateMachineSetting}
-                />
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Previous Shot */}
-        {model.previousShot && (
-          <section className="settings-section">
-            <h2 className="settings-section__title">Last Shot</h2>
-            <div className="settings-section__content">
-              <div className="status-info">
-                <p className="status-info__label">Profile</p>
-                <p className="status-info__value">{model.previousShot.profileName}</p>
-              </div>
-              {model.previousShot.totalYield && (
-                <div className="status-info">
-                  <p className="status-info__label">Yield</p>
-                  <p className="status-info__value">{model.previousShot.totalYield}g</p>
-                </div>
-              )}
-              {model.previousShot.totalTime && (
-                <div className="status-info">
-                  <p className="status-info__label">Duration</p>
-                  <p className="status-info__value">{model.previousShot.totalTime}s</p>
-                </div>
-              )}
-              {model.previousShot.timestamp && (
-                <div className="status-info">
-                  <p className="status-info__label">Time</p>
-                  <p className="status-info__value">{new Date(model.previousShot.timestamp).toLocaleTimeString()}</p>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* Updates */}
-        <section className="settings-section">
-          <h2 className="settings-section__title">Updates</h2>
-          <div className="settings-section__content">
-            {updates.map((update) => (
-              <div key={update.type} className="settings-section__subsection">
-                <div className="update-card">
-                  <div className="update-card__header">
-                    <h3 className="update-card__title">{update.type === 'app' ? 'Bestpresso' : 'Machine Firmware'}</h3>
-                    <div className="update-card__version">
-                      v{update.currentVersion}
-                      {update.latestVersion && update.latestVersion !== update.currentVersion && (
-                        <span className="update-card__latest"> → v{update.latestVersion}</span>
-                      )}
-                    </div>
-                  </div>
-                  {update.updateAvailable && (
-                    <div className="update-card__badge">Update available</div>
-                  )}
-                  {update.releaseNotes && (
-                    <div className="update-card__notes">
-                      <p>{update.releaseNotes.split('\n')[0]}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            <button
-              className="settings-section__button"
-              type="button"
-              disabled={checkingUpdates}
-              onClick={handleCheckUpdates}
-            >
-              {checkingUpdates ? 'Checking...' : 'Check for updates'}
-            </button>
-          </div>
-        </section>
-
-        {/* About */}
-        <section className="settings-section">
-          <h2 className="settings-section__title">About</h2>
-          <div className="settings-section__content">
-            <div className="about-info">
-              <p className="about-info__text">Bestpresso is a companion app for Decent Espresso machines.</p>
-              <div className="about-info__links">
-                <a href="https://github.com/dbarranco/bestpresso" target="_blank" rel="noopener noreferrer" className="about-link">
-                  GitHub Repository
-                </a>
-                <a href="https://github.com/dbarranco/bestpresso/issues" target="_blank" rel="noopener noreferrer" className="about-link">
-                  Report Issues
-                </a>
-              </div>
-            </div>
-          </div>
-        </section>
+      <div className="settings-panel__body">
+        <SettingsNav
+          selectedCategoryId={selection.categoryId}
+          selectedSubcategoryId={selection.subcategoryId}
+          onSelect={(categoryId, subcategoryId) => setSelection({ categoryId, subcategoryId })}
+        />
+        <main className="settings-content">
+          <PageContent {...pageProps} />
+        </main>
       </div>
     </section>
   )
