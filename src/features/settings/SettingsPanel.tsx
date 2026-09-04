@@ -127,6 +127,13 @@ export function SettingsPanel({
     return labels[status] || status
   }
 
+  const handleSwitchSkin = () => {
+    // Redirect to Streamline.js (typically at port 3000)
+    const host = window.location.hostname
+    const port = 3000
+    window.location.href = `http://${host}:${port}`
+  }
+
   return (
     <section className="settings-panel">
       <header className="settings-panel__header">
@@ -140,7 +147,14 @@ export function SettingsPanel({
           <img src={settingsBackIcon} alt="" />
         </button>
         <h1 className="settings-panel__title">Settings</h1>
-        <div className="settings-panel__spacer" />
+        <button
+          className="settings-panel__skin-switcher"
+          type="button"
+          title="Switch to Streamline"
+          onClick={handleSwitchSkin}
+        >
+          📱 Streamline
+        </button>
       </header>
 
       {feedback && (
