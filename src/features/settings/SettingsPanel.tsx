@@ -76,7 +76,7 @@ export function SettingsPanel({
     setCheckingUpdates(true)
     try {
       // Check for app updates from GitHub
-      const response = await fetch('https://api.github.com/repos/xinghendri/bestpresso/releases/latest', {
+      const response = await fetch('https://api.github.com/repos/dbarranco/bestpresso/releases/latest', {
         headers: { 'Accept': 'application/vnd.github.v3+json' },
       })
       if (response.ok) {
@@ -231,10 +231,10 @@ export function SettingsPanel({
             <div className="about-info">
               <p className="about-info__text">Bestpresso is a companion app for Decent Espresso machines.</p>
               <div className="about-info__links">
-                <a href="https://github.com/xinghendri/bestpresso" target="_blank" rel="noopener noreferrer" className="about-link">
+                <a href="https://github.com/dbarranco/bestpresso" target="_blank" rel="noopener noreferrer" className="about-link">
                   GitHub Repository
                 </a>
-                <a href="https://github.com/xinghendri/bestpresso/issues" target="_blank" rel="noopener noreferrer" className="about-link">
+                <a href="https://github.com/dbarranco/bestpresso/issues" target="_blank" rel="noopener noreferrer" className="about-link">
                   Report Issues
                 </a>
               </div>
