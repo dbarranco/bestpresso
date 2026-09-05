@@ -139,6 +139,12 @@ export async function updateSettings(patch: Partial<DecaidSettings>) {
   await sendJson('/settings', patch)
 }
 
+export async function updateSkins() {
+  const response = await fetch(`${getDecaidEndpoints().apiBase}/webui/skins/update`, { method: 'POST' })
+  if (!response.ok) throw new Error(`Decaid skin update returned ${response.status}: ${await response.text()}`)
+  return await response.json() as { message?: string }
+}
+
 export async function setScalePowerMode(scalePowerMode: ScalePowerMode) {
   const response = await fetch(`${getDecaidEndpoints().apiBase}/settings`, {
     method: 'POST',

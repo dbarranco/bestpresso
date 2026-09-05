@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { CupWarmerPreheatState, CupWarmerState, DecaidAdvancedSettings, DecaidDevice, DecaidMachineSettings, DecaidSettings, SkinRecord } from '../../api/decaid/types'
+import { updateSkins } from '../../api/decaid/client'
 import { Metric } from '../../components/Metric/Metric'
 import type { MetricEdit } from '../../components/Metric/Metric'
 import type { BrewProfile, BrewingScreenModel, EditableMachineSetting, EditableProfileSetting, MachineUtility, ScaleConnection, SettingFeedback } from '../../domain/brewing'
@@ -353,10 +354,11 @@ function MachineUsbPage({ machineSettings, updateUsbCharger, settingsDisabled }:
 function UpdatesAppPage(_props: SettingsPageProps) {
   const [latestVersion, setLatestVersion] = useState<string | undefined>()
   const [releaseNotes, setReleaseNotes] = useState<string | undefined>()
-  const [checking, setChecking] = useState(false)
+  const [updating, setUpdating] = useState(false)
+  const [updateResult, setUpdateResult] = useState<string | undefined>()
+  const [updateError, setUpdateError] = useState<string | undefined>()
 
   const check = async () => {
-    setChecking(true)
     try {
       const response = await fetch('https://api.github.com/repos/dbarranco/bestpresso/releases/latest', {
         headers: { Accept: 'application/vnd.github.v3+json' },
@@ -368,13 +370,26 @@ function UpdatesAppPage(_props: SettingsPageProps) {
       }
     } catch (error) {
       console.error('Failed to check for updates:', error)
-    } finally {
-      setChecking(false)
     }
   }
 
   // eslint-disable-next-line react/set-state-in-effect -- initial check on mount
-  useEffect(() => { check() }, [])
+  useEffect(() => { void check() }, [])
+
+  const update = async () => {
+    setUpdating(true)
+    setUpdateResult(undefined)
+    setUpdateError(undefined)
+    try {
+      await updateSkins()
+      setUpdateResult('Skin update triggered. The new version is downloaded and served — reload the page to apply it.')
+      void check()
+    } catch (error) {
+      setUpdateError(error instanceof Error ? error.message : 'Skin update failed.')
+    } finally {
+      setUpdating(false)
+    }
+  }
 
   return (
     <PageFrame title="Bestpresso Update">
@@ -382,16 +397,18 @@ function UpdatesAppPage(_props: SettingsPageProps) {
         <div className="update-card__header">
           <h3 className="update-card__title">Bestpresso</h3>
           <div className="update-card__version">
-            v0.1.28
-            {latestVersion && latestVersion !== '0.1.28' && <span className="update-card__latest"> → v{latestVersion}</span>}
+            v0.1.29
+            {latestVersion && latestVersion !== '0.1.29' && <span className="update-card__latest"> → v{latestVersion}</span>}
           </div>
         </div>
-        {latestVersion && latestVersion !== '0.1.28' && <div className="update-card__badge">Update available</div>}
+        {latestVersion && latestVersion !== '0.1.29' && <div className="update-card__badge">Update available</div>}
         {releaseNotes && <div className="update-card__notes"><p>{releaseNotes.split('\n')[0]}</p></div>}
       </div>
-      <ButtonRow label="Update Check" description="Check for a new version on GitHub." disabled={checking} onAction={check}>
-        {checking ? 'Checking…' : 'Check for updates'}
+      <ButtonRow label="Update Skin" description="Ask the machine to pull the newest version of every installed skin from its source." disabled={updating} onAction={() => void update()}>
+        {updating ? 'Updating…' : 'Update skins'}
       </ButtonRow>
+      {updateResult && <StatusRow label="Done" value={updateResult} />}
+      {updateError && <StatusRow label="Error" value={updateError} />}
     </PageFrame>
   )
 }
@@ -407,7 +424,7 @@ function AboutPage(_props: SettingsPageProps) {
         </div>
       </div>
       <ButtonRow label="Version" description="Current installed version." onAction={() => window.open('https://github.com/dbarranco/bestpresso/releases', '_blank', 'noopener')}>
-        v0.1.28 · View releases
+        v0.1.29 · View releases
       </ButtonRow>
     </PageFrame>
   )

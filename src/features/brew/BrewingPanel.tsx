@@ -95,7 +95,14 @@ export function BrewingPanel({ profiles, activeProfileId, settingsDisabled, onUp
       setOptimisticProfileId(null)
       return
     }
+    const request = ++selectionRequest.current
+    const requestSelection = (succeeded: boolean) => {
+      if (request !== selectionRequest.current) return
+      setOptimisticProfileId(succeeded ? profile.id : null)
+    }
     if (animate && Math.abs(index - activeIndex) === 1) {
+      let resolveAnimation: (() => void) | undefined
+      const animationDone = new Promise<void>((resolve) => { resolveAnimation = resolve })
       setAnimatingToIndex(index)
       const direction = index > activeIndex ? -1 : 1
       const animationDuration = 300
@@ -111,16 +118,19 @@ export function BrewingPanel({ profiles, activeProfileId, settingsDisabled, onUp
         } else {
           setDragProgress(0)
           setAnimatingToIndex(null)
+          resolveAnimation?.()
         }
       }
 
       animationFrameId.current = window.requestAnimationFrame(animate)
+      await animationDone
+      const succeeded = await onSelectProfile(profile.id)
+      requestSelection(succeeded)
+    } else {
+      setOptimisticProfileId(profile.id)
+      const succeeded = await onSelectProfile(profile.id)
+      requestSelection(succeeded)
     }
-
-    setOptimisticProfileId(profile.id)
-    const request = ++selectionRequest.current
-    await onSelectProfile(profile.id)
-    if (request === selectionRequest.current) setOptimisticProfileId(null)
   }
 
   const selectRelative = (direction: number) => {
